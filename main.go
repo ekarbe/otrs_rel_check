@@ -12,50 +12,69 @@ import (
 	"time"
 )
 
-const pluginVersion = "Version 0.1\n"
+var (
+	//Version variable for build
+	Version string
+	//Build variable for build
+	Build string
+)
 
-type otrs struct {
-	version string
-	date    string
+type otrsPackage struct {
+	version     string
+	releaseDate string
 }
 
-var h = flag.Bool("h", false, "prints the help")
-var self = flag.Bool("V", false, "prints the version of the plugin")
-var v = flag.Int64("v", 0, "defines the version to be checked. defaults to all versions.")
-var t = flag.Int("t", 0, "defines the time of a new version")
+var helpFlag = flag.Bool("help", false, "Print verbose help information.")
+var verbose1Flag = flag.Bool("v", false, "Verbose output level 1.")
+var verbose2Flag = flag.Bool("vv", false, "Verbose output level 2.")
+var verbose3Flag = flag.Bool("vvv", false, "Verbose output level 3.")
+var versionFlag = flag.Bool("V", false, "Print the version.")
+var packageVersion = flag.Int64("p", 0, "A major version of OTRS.")
+var releaseTime = flag.Int("t", 31, "The time in days where a release happened.")
 
 func init() {
 	flag.Parse()
 }
 
 func main() {
-	if *h {
-		flag.PrintDefaults()
-		os.Exit(0)
-	}
-	if *self {
-		print(pluginVersion)
-		os.Exit(0)
-	}
-	body, err := GetBody()
-	if err != nil {
-		print(err)
-	}
-	releases, err := GetReleases(body)
-	if err != nil {
-		print(err)
-	}
-	if *t != 0 {
-		releases, err = GetTimeWindowReleases(releases)
-		if err != nil {
-			print(err)
-		}
-	}
-	fmt.Print(releases)
+	fmt.Print(run())
 }
 
-//GetBody ...
-func GetBody() (string, error) {
+func run() string {
+	if *helpFlag {
+		flag.PrintDefaults()
+		os.Exit(0)
+	} else if *versionFlag {
+		fmt.Printf("Version %s on build %s\n", Version, Build)
+		os.Exit(0)
+	}
+	return checkRelease()
+}
+
+func checkRelease() string {
+	body, err := getBody()
+	if err != nil {
+		return "3: " + err.Error()
+	}
+	releases, err := getReleases(body)
+	if err != nil {
+		return "3: " + err.Error()
+	}
+	currentReleases, err := getTimeWindowReleases(releases)
+	if err != nil {
+		return "3: " + err.Error()
+	}
+	if len(currentReleases) == 0 {
+		return "0: No updates available"
+	}
+	output := "2: Updates available\n"
+	for _, otrsPackage := range releases {
+		output += otrsPackage.version + " released on " + otrsPackage.releaseDate + "\n"
+	}
+	return output
+}
+
+func getBody() (string, error) {
 	resp, err := http.Get("https://ftp.otrs.org/pub/otrs/")
 	if err != nil {
 		return "", err
@@ -68,23 +87,22 @@ func GetBody() (string, error) {
 	return string(body), nil
 }
 
-//GetReleases ...
-func GetReleases(body string) (map[string]otrs, error) {
+func getReleases(body string) (map[string]otrsPackage, error) {
 	entries := strings.Split(string(body), "</tr>")
 	version := regexp.MustCompile("([0-9]+\\.[0-9]+\\.[0-9]+)")
 	date := regexp.MustCompile("([0-9])([0-9]*-[0-9]*-[0-9]*) [0-9]*:[0-9]*")
-	releases := make(map[string]otrs)
+	releases := make(map[string]otrsPackage)
 	for i := range entries {
-		o := otrs{}
+		o := otrsPackage{}
 		o.version = version.FindString(entries[i])
-		o.date = date.FindString(entries[i])
-		if o.version != "" && o.date != "" {
+		o.releaseDate = date.FindString(entries[i])
+		if o.version != "" && o.releaseDate != "" {
 			temp := string(o.version[0])
 			majorVersion, err := strconv.ParseInt(temp, 10, 64)
 			if err != nil {
 				return nil, err
 			}
-			if *v == 0 || majorVersion == *v {
+			if *packageVersion == 0 || majorVersion == *packageVersion {
 				releases[o.version] = o
 			}
 		}
@@ -92,12 +110,11 @@ func GetReleases(body string) (map[string]otrs, error) {
 	return releases, nil
 }
 
-//GetTimeWindowReleases ...
-func GetTimeWindowReleases(releases map[string]otrs) (map[string]otrs, error) {
-	timeWindow := time.Now().AddDate(0, 0, -*t)
-	for key, otrs := range releases {
+func getTimeWindowReleases(releases map[string]otrsPackage) (map[string]otrsPackage, error) {
+	timeWindow := time.Now().AddDate(0, 0, -*releaseTime)
+	for key, otrsPackage := range releases {
 		layout := "2006-01-02 15:04"
-		parseTime, err := time.Parse(layout, otrs.date)
+		parseTime, err := time.Parse(layout, otrsPackage.releaseDate)
 		if err != nil {
 			return releases, err
 		}
