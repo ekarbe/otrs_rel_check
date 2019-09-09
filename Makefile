@@ -27,6 +27,7 @@ go-compile: go-get go-build
 go-build:
 	@echo "  >  Building binary..."
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build $(LDFLAGS) -o $(GOBIN)/$(PROJECTNAME) $(GOFILES)
+	@upx --brute $(GOBIN)/$(PROJECTNAME)
 
 go-generate:
 	@echo "  >  Generating dependency files..."
