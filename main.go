@@ -12,12 +12,15 @@ import (
 	"time"
 )
 
+const pluginVersion = "Version 0.1\n"
+
 type otrs struct {
 	version string
 	date    string
 }
 
 var h = flag.Bool("h", false, "prints the help")
+var self = flag.Bool("V", false, "prints the version of the plugin")
 var v = flag.Int64("v", 0, "defines the version to be checked. defaults to all versions.")
 var t = flag.Int("t", 0, "defines the time of a new version")
 
@@ -27,7 +30,11 @@ func init() {
 
 func main() {
 	if *h {
-		PrintHelp()
+		flag.PrintDefaults()
+		os.Exit(0)
+	}
+	if *self {
+		print(pluginVersion)
 		os.Exit(0)
 	}
 	body, err := GetBody()
@@ -99,9 +106,4 @@ func GetTimeWindowReleases(releases map[string]otrs) (map[string]otrs, error) {
 		}
 	}
 	return releases, nil
-}
-
-//PrintHelp ...
-func PrintHelp() {
-	print("main help\n[Option] [Description]\n-version | defines the version to be checked\n")
 }
