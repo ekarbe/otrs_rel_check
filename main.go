@@ -64,10 +64,11 @@ func checkRelease() string {
 	if err != nil {
 		return "3: " + err.Error()
 	}
-	if len(currentReleases) == 0 {
-		return "0: No updates available"
+	releaseCount := len(currentReleases)
+	if releaseCount == 0 {
+		return "0: No releases available"
 	}
-	output := "2: Updates available\n"
+	output := "2: " + strconv.Itoa(releaseCount) + " release(s) available\n"
 	for _, otrsPackage := range releases {
 		output += otrsPackage.version + " released on " + otrsPackage.releaseDate + "\n"
 	}
