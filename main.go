@@ -32,12 +32,15 @@ var versionFlag = flag.Bool("V", false, "Print the version.")
 var packageVersion = flag.Int64("p", 0, "A major version of OTRS.")
 var releaseTime = flag.Int("t", 31, "The time in days where a release happened.")
 
+var stateFlag = 0
+
 func init() {
 	flag.Parse()
 }
 
 func main() {
 	fmt.Print(run())
+	os.Exit(stateFlag)
 }
 
 func run() string {
@@ -54,21 +57,26 @@ func run() string {
 func checkRelease() string {
 	body, err := getBody()
 	if err != nil {
-		return "3: " + err.Error()
+		stateFlag = 3
+		return err.Error()
 	}
 	releases, err := getReleases(body)
 	if err != nil {
-		return "3: " + err.Error()
+		stateFlag = 3
+		return err.Error()
 	}
 	currentReleases, err := getTimeWindowReleases(releases)
 	if err != nil {
-		return "3: " + err.Error()
+		stateFlag = 3
+		return err.Error()
 	}
 	releaseCount := len(currentReleases)
 	if releaseCount == 0 {
-		return "0: No releases available"
+		stateFlag = 0
+		return "No releases available"
 	}
-	output := "2: " + strconv.Itoa(releaseCount) + " release(s) available\n"
+	stateFlag = 2
+	output := strconv.Itoa(releaseCount) + " release(s) available\n"
 	for _, otrsPackage := range releases {
 		output += otrsPackage.version + " released on " + otrsPackage.releaseDate + "\n"
 	}
